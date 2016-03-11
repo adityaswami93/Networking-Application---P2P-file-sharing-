@@ -132,14 +132,14 @@ def create_svr():
               l = connectionSocket.recv(data_size)
               f.write(l)
             else:
-              while data_size-bytesrcvd >= 1024:
+              while data_size > 1024:
                 print 'Reciving..'
                 l = connectionSocket.recv(1024)
                 f.write(l)
-                bytesrcvd += 1024
+                data_size -= 1024
               else:
                 print 'last receive .'
-                l = connectionSocket.recv(data_size-bytesrcvd)
+                l = connectionSocket.recv(data_size)
                 f.write(l)
             f.close()
 
