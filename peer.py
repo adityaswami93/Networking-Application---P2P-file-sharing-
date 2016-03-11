@@ -53,40 +53,9 @@ def create_client(ip_addr):
         print 'Sending...'
         client_socket.sendall(l)
         f.close()
-        #msg = 'transferover'
-        #client_socket.send(msg)
-
-         # data_size = len(l)
-         # data_sent = filename + ' ' + str(data_size) + ' '
-         # client_socket.send(data_sent)
-         # #time.sleep( 1 )
-         # client_socket.sendall(l)
-         # #print('Sent ',repr(l))
-         # f.close()
    client_socket.close()
-   # else: error handling
-   
-
-
-   # file_list_svr = client_socket.recv(1024)
-   # file_list_client = get_file_list()
-   # #file_exchange = get_list_fileToTransfer(file_list_client,file_list_svr)
-   # common_files = get_list_commonfiles(file_list_client,file_list_svr)
-   # msg = 'commonfiles'
-   # client_socket.send(msg)
-   # msg = client_socket.recv(1024)
-   # if msg == 'svrready':
-   #    common_files_str = ''
-   #    for filename in common_files:
-   #       common_files_str += str(filename) + ' '
-   #    client_socket.send(common_files_str)
-   #    file_exchange = get_list_fileToTransfer(file_list_client,common_files_str)
-   # #print 'From Server:', file_list_svr
-   # print 'File to exchange', file_exchange
-   # client_socket.close()
-
-   
-
+  
+  
 def create_svr():
    curr_socket = make_svr_skt()
    curr_socket.listen(5)
@@ -142,39 +111,6 @@ def create_svr():
                 l = connectionSocket.recv(data_size)
                 f.write(l)
             f.close()
-
-            # l = connectionSocket.recv(1024)
-            # while l:
-            #     print 'Reciving..'
-            #     f.write(l)
-            #     l = connectionSocket.recv(1024)
-            # f.close()
-
-         # while True:
-         #    data_rcvd = connectionSocket.recv(1024)
-         #    print 'data_rcvd', data_rcvd
-         #    data_rcvd = data_rcvd.split()
-         #    if len(data_rcvd):
-         #      break;
-         #    filename = data_rcvd[0]
-         #    print data_rcvd
-         #    print filename
-         #    data_size = int (data_rcvd[1])
-         #    f = open(filename,'a+')
-         #    #data = (connectionSocket.recv(data_size)).decode(encoding='utf-8')
-         #    data = recv_timeout(connectionSocket,data_size)
-         #    #data = connectionSocket.recv(1024)
-         #    #if not data or not f:
-         #      # break
-         #    f.write(data)
-         #    f.close()
-
-      # if msg == 'commonfiles':
-      #    connectionSocket.send('svrready')
-      #    common_files = connectionSocket.recv(1024)
-      #    file_exchange = get_list_fileToTransfer(file_to_send,common_files)
-      #    print 'file_to_send' , file_exchange
-      #capitalizedSentence = sentence.upper()
       connectionSocket.close()
 
 def recv_timeout(the_socket,data_size,timeout=2):
