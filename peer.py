@@ -40,19 +40,20 @@ def create_client(ip_addr):
       print 'File to exchange', file_exchange
    if msgrcvd == 'sendOk':
       print('yes')
-      for filename in file_exchange:
-        f = open(filename,'rb')
-        l = f.read()
-        data_size = len(l)
-        data_sent = str(filename) + ' ' + str(data_size) + ' '
-        while(len(data_sent)<1024):
-          data_sent += ' '
-        print filename
-        client_socket.settimeout(5.0)
-        client_socket.send(data_sent)
-        print 'Sending...'
-        client_socket.sendall(l)
-        f.close()
+      send_files(client_socket,file_exchange)
+      # for filename in file_exchange:
+      #   f = open(filename,'rb')
+      #   l = f.read()
+      #   data_size = len(l)
+      #   data_sent = str(filename) + ' ' + str(data_size) + ' '
+      #   while(len(data_sent)<1024):
+      #     data_sent += ' '
+      #   print filename
+      #   client_socket.settimeout(5.0)
+      #   client_socket.send(data_sent)
+      #   print 'Sending...'
+      #   client_socket.sendall(l)
+      #   f.close()
    client_socket.close()
   
   
@@ -81,36 +82,10 @@ def create_svr():
          print 'file_to_send' , file_exchange
          #connectionSocket.close()
       if msg == 'sendingFile':
-         msg = 'sendOk'
-         connectionSocket.send(msg)
-         while True:
-            data_rcvd = connectionSocket.recv(1024)
-            if not data_rcvd:
-              print 'stuck'
-              break;
-            if data_rcvd == 'transferover':
-              break;
-            print 'data_rcvd', data_rcvd
-            data_rcvd = data_rcvd.split()
-            # if not len(data_rcvd):
-            #   break;
-            filename = data_rcvd[0]
-            data_size = int(data_rcvd[1])
-            f = open(filename,'a+')
-            if data_size<1024:
-              l = connectionSocket.recv(data_size)
-              f.write(l)
-            else:
-              while data_size > 1024:
-                print 'Reciving..'
-                l = connectionSocket.recv(1024)
-                f.write(l)
-                data_size -= 1024
-              else:
-                print 'last receive .'
-                l = connectionSocket.recv(data_size)
-                f.write(l)
-            f.close()
+        msg = 'sendOk'
+        connectionSocket.send(msg)
+        if rcv_files(connectionSocket) == False:
+          break
       connectionSocket.close()
 
 def recv_timeout(the_socket,data_size,timeout=2):
@@ -147,6 +122,48 @@ def recv_timeout(the_socket,data_size,timeout=2):
      
     #join all parts to make final string
     return ''.join(total_data)
+
+def send_files(client_socket,file_exchange):
+  for filename in file_exchange:
+    f = open(filename,'rb')
+    l = f.read()
+    data_size = len(l)
+    data_sent = str(filename) + ' ' + str(data_size) + ' '
+    while(len(data_sent)<1024):
+      data_sent += ' '
+    print filename
+    client_socket.settimeout(5.0)
+    client_socket.send(data_sent)
+    print 'Sending...'
+    client_socket.sendall(l)
+    f.close()
+
+def rcv_files(connectionSocket):
+  while True:
+    data_rcvd = connectionSocket.recv(1024)
+    if not data_rcvd:
+      return False
+    print 'data_rcvd', data_rcvd
+    data_rcvd = data_rcvd.split()
+    # if not len(data_rcvd):
+    #   break;
+    filename = data_rcvd[0]
+    data_size = int(data_rcvd[1])
+    f = open(filename,'a+')
+    if data_size<1024:
+      l = connectionSocket.recv(data_size)
+      f.write(l)
+    else:
+      while data_size > 1024:
+        print 'Reciving..'
+        l = connectionSocket.recv(1024)
+        f.write(l)
+        data_size -= 1024
+      else:
+        print 'last receive .'
+        l = connectionSocket.recv(data_size)
+        f.write(l)
+    f.close()
 
 
 def get_file_list():
