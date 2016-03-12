@@ -7,6 +7,8 @@ import os
 from socket import *
 
 port = 6789    #port no. is fixed
+DATA_RATE = 4096
+FILENAME_SEPARATOR = '0x00'
 
 def make_svr_skt():
    curr_socket = socket(AF_INET,SOCK_STREAM)
@@ -41,6 +43,15 @@ def create_client(ip_addr,directory):
    if msgrcvd == 'sendOk':
       print('yes')
       send_files(client_socket,file_exchange,directory)
+      #client_socket.settimeout(10)
+      while(msgrcvd != 'sendingfiles'):
+        try:
+          msgrcvd = client_socket.recv(1024)
+          print msgrcvd
+        except error:
+          continue
+      else:
+        client_socket.send('readytoreceive')
       rcv_files(client_socket,directory)
 
       # for filename in file_exchange:
@@ -77,7 +88,7 @@ def create_svr(directory):
          common_files = get_list_commonfiles(file_list_client,file_list_svr)
          common_files_str = ''
          for filename in common_files:
-            common_files_str += str(filename) + ' '
+            common_files_str += str(filename) + FILENAME_SEPARATOR
          connectionSocket.send(common_files_str)
          msg = connectionSocket.recv(1024)
          file_exchange = get_list_fileToTransfer(file_list_svr,common_files_str)
@@ -86,71 +97,51 @@ def create_svr(directory):
       if msg == 'sendingFile':
         msg = 'sendOk'
         connectionSocket.send(msg)
-        # if rcv_files(connectionSocket) == False:
-        #   break
-        rcv_files(connectionSocket,directory)
-        connectionSocket.settimeout(10)
-        send_files(connectionSocket,file_exchange,directory)
+        if rcv_files(connectionSocket,directory) == False:
+          print('check')
+          msg = 'sendingfiles'
+          connectionSocket.send(msg)
+        msg = connectionSocket.recv(1024)
+        #rcv_files(connectionSocket,directory)
+        #connectionSocket.settimeout(10)
+      if msg == 'readytoreceive':
+        if send_files(connectionSocket,file_exchange,directory):
+          break
       connectionSocket.close()
 
-def recv_timeout(the_socket,data_size,timeout=2):
-    #make socket non blocking
-    the_socket.setblocking(0)
-     
-    #total data partwise in an array
-    total_data=[];
-    data='';
-     
-    #beginning time
-    begin=time.time()
-    while 1:
-        #if you got some data, then break after timeout
-        if total_data and time.time()-begin > timeout:
-            break
-         
-        #if you got no data at all, wait a little longer, twice the timeout
-        elif time.time()-begin > timeout*2:
-            break
-         
-        #recv something
-        try:
-            data = the_socket.recv(data_size)
-            if data:
-                total_data.append(data)
-                #change the beginning time for measurement
-                begin=time.time()
-            else:
-                #sleep for sometime to indicate a gap
-                time.sleep(0.1)
-        except:
-            pass
-     
-    #join all parts to make final string
-    return ''.join(total_data)
 
 def send_files(client_socket,file_exchange,directory):
-  for filename in file_exchange:
-    f = open(directory+'/'+filename,'rb')
+  file_list_arr = []
+  for (dirpath, dirnames, filenames) in os.walk(directory):
+      for filename in file_exchange:
+        if filename in filenames:
+          file_list_arr.append([dirpath,filename])
+  for fileinfo in file_list_arr:
+    f = open(fileinfo[0]+'/'+fileinfo[1],'rb')
     l = f.read()
     data_size = len(l)
-    data_sent = str(filename) + ' ' + str(data_size) + ' '
+    data_sent = str(fileinfo[1]) + FILENAME_SEPARATOR + str(data_size)
     while(len(data_sent)<1024):
       data_sent += ' '
-    print filename
+    print fileinfo[1]
     client_socket.settimeout(5.0)
     client_socket.send(data_sent)
     print 'Sending...'
     client_socket.sendall(l)
     f.close()
+  client_socket.send('msgended')
+  return True
 
 def rcv_files(connectionSocket,directory):
   print 'The server is ready to receive'
   while True:
     data_rcvd = connectionSocket.recv(1024)
+    if data_rcvd == 'msgended':
+      return False
     if not data_rcvd:
       return False
     print 'data_rcvd', data_rcvd
-    data_rcvd = data_rcvd.split()
+    data_rcvd = data_rcvd.split(FILENAME_SEPARATOR)
     # if not len(data_rcvd):
     #   break;
     filename = data_rcvd[0]
@@ -181,12 +172,12 @@ def get_file_list(directory):
       file_list_arr.extend(filenames)
    file_list_arr = sorted(file_list_arr,key=str.lower)
    for filename in file_list_arr:
-      list_files += str(filename) + ' '
+      list_files += str(filename) + FILENAME_SEPARATOR
    return list_files
 
 def get_list_fileToTransfer(file_list,common_files):
-   common_files = common_files.split()
-   file_list = file_list.split()
+   common_files = common_files.split(FILENAME_SEPARATOR)
+   file_list = file_list.split(FILENAME_SEPARATOR)
    exchange_file = []
    for filename in file_list:
       if filename not in common_files:
@@ -194,8 +185,8 @@ def get_list_fileToTransfer(file_list,common_files):
    return exchange_file
 
 def get_list_commonfiles(client_files,svr_files):
-   client_files = client_files.split()
-   svr_files = svr_files.split()
+   client_files = client_files.split(FILENAME_SEPARATOR)
+   svr_files = svr_files.split(FILENAME_SEPARATOR)
    return set(client_files) & set(svr_files)
 
 def main(argv):
