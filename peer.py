@@ -20,7 +20,7 @@ def make_client_skt(ip_addr):
    return clientSocket
 
 
-def create_client(ip_addr):
+def create_client(ip_addr,directory):
    client_socket = make_client_skt(ip_addr)
    #sentence = raw_input('Input lowercase sentence:')
    msgSent = 'clientready'
@@ -30,7 +30,7 @@ def create_client(ip_addr):
    #client_socket.close()
    if msgrcvd == 'svrready':
       #client_socket.connect((ip_addr,port))
-      file_list_client = get_file_list()
+      file_list_client = get_file_list(directory)
       client_socket.send(file_list_client)
       common_files_str = client_socket.recv(1024)
       file_exchange = get_list_fileToTransfer(file_list_client,common_files_str)
@@ -40,7 +40,9 @@ def create_client(ip_addr):
       print 'File to exchange', file_exchange
    if msgrcvd == 'sendOk':
       print('yes')
-      send_files(client_socket,file_exchange)
+      send_files(client_socket,file_exchange,directory)
+      rcv_files(client_socket,directory)
+
       # for filename in file_exchange:
       #   f = open(filename,'rb')
       #   l = f.read()
@@ -57,10 +59,10 @@ def create_client(ip_addr):
    client_socket.close()
   
   
-def create_svr():
+def create_svr(directory):
    curr_socket = make_svr_skt()
    curr_socket.listen(5)
-   print 'The server is ready to receive'
+   print 'server started'
    list_files = ""
    while True:
       connectionSocket, addr = curr_socket.accept()
@@ -69,7 +71,7 @@ def create_svr():
       print(msg)
       if msg == 'clientready':
          msg = 'svrready'
-         file_list_svr = get_file_list()
+         file_list_svr = get_file_list(directory)
          connectionSocket.send(msg)
          file_list_client = connectionSocket.recv(1024)
          common_files = get_list_commonfiles(file_list_client,file_list_svr)
@@ -84,8 +86,11 @@ def create_svr():
       if msg == 'sendingFile':
         msg = 'sendOk'
         connectionSocket.send(msg)
-        if rcv_files(connectionSocket) == False:
-          break
+        # if rcv_files(connectionSocket) == False:
+        #   break
+        rcv_files(connectionSocket,directory)
+        connectionSocket.settimeout(10)
+        send_files(connectionSocket,file_exchange,directory)
       connectionSocket.close()
 
 def recv_timeout(the_socket,data_size,timeout=2):
@@ -123,9 +128,9 @@ def recv_timeout(the_socket,data_size,timeout=2):
     #join all parts to make final string
     return ''.join(total_data)
 
-def send_files(client_socket,file_exchange):
+def send_files(client_socket,file_exchange,directory):
   for filename in file_exchange:
-    f = open(filename,'rb')
+    f = open(directory+'/'+filename,'rb')
     l = f.read()
     data_size = len(l)
     data_sent = str(filename) + ' ' + str(data_size) + ' '
@@ -138,7 +143,8 @@ def send_files(client_socket,file_exchange):
     client_socket.sendall(l)
     f.close()
 
-def rcv_files(connectionSocket):
+def rcv_files(connectionSocket,directory):
+  print 'The server is ready to receive'
   while True:
     data_rcvd = connectionSocket.recv(1024)
     if not data_rcvd:
@@ -149,7 +155,7 @@ def rcv_files(connectionSocket):
     #   break;
     filename = data_rcvd[0]
     data_size = int(data_rcvd[1])
-    f = open(filename,'a+')
+    f = open(directory+'/'+filename,'a+')
     if data_size<1024:
       l = connectionSocket.recv(data_size)
       f.write(l)
@@ -166,10 +172,12 @@ def rcv_files(connectionSocket):
     f.close()
 
 
-def get_file_list():
+def get_file_list(directory):
    file_list_arr = []
    list_files = ""
-   for (dirpath, dirnames, filenames) in os.walk('.'):
+   if directory == '':
+    directory = '.'
+   for (dirpath, dirnames, filenames) in os.walk(directory):
       file_list_arr.extend(filenames)
    file_list_arr = sorted(file_list_arr,key=str.lower)
    for filename in file_list_arr:
@@ -210,9 +218,9 @@ def main(argv):
    print 'dir is "', directory
 
    if str(ip_addr)=="":
-      create_svr()
+      create_svr(directory)
    else:
-      create_client(ip_addr)
+      create_client(ip_addr,directory)
 
 
 
